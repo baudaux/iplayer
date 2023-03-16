@@ -1,0 +1,21 @@
+#+begin_src plantuml :file class.png
+  title iplayer class diagram
+
+  class IPlayer
+  class Cmd
+  class Playlist
+  class Decoder
+  class Track
+
+  IPlayer "1" *-- "1" Playlist
+  IPlayer "1" *-- "1" Decoder
+  Playlist *-- "many" Track
+
+  Cmd "many" -* IPlayer : < executes
+
+  Decoder -- Track: > decodes
+
+  Cmd -- Playlist: > interacts with
+
+#+end_src
+

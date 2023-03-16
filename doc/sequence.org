@@ -1,0 +1,97 @@
+#+begin_src plantuml :file sequence.png
+    title iplayer sequence diagram
+
+    skinparam BoxPadding 20
+
+    autonumber
+
+    actor User
+    box "main thread" #LightBlue
+    participant STL
+    participant IPlayer<<main thread>>
+    end box
+
+    participant Events<<queue>>
+
+    box "workerTask" #LightGreen
+    participant IPlayer as IPlayer2 <<workerTask>>
+    participant Cmd
+    participant Playlist
+    participant Track
+    participant Decoder <<workerTask>>
+    end box
+    box "decoderTask" #Orange
+    participant Decoder as Decoder2 <<decoderTask>>
+    end box
+
+    User -> IPlayer: run()
+    activate IPlayer
+    create IPlayer2
+    IPlayer -> IPlayer2: start
+
+    loop for each input line
+
+    IPlayer2 -> IPlayer2: cmd_cond.wait()
+
+    IPlayer -> STL: readline()
+    activate STL
+    User --> STL: command\n+\narguments
+    STL --> IPlayer: line
+    deactivate STL
+    IPlayer -> IPlayer: sendCmd()
+    activate IPlayer
+    IPlayer -> Events: push(cmd)
+    IPlayer -> IPlayer2: cmd_cond.notify_one()
+    IPlayer -> IPlayer: res_cond.wait()		  
+    activate IPlayer2
+
+    IPlayer2 -> Events: pop()
+    Events --> IPlayer2: cmd
+
+    IPlayer2 -> Cmd: execute()
+
+    Cmd -> Playlist: play()
+
+    Playlist -> Track: play()
+
+    Track -> IPlayer2: play()
+    activate IPlayer2
+
+    IPlayer2 -> Decoder: decode(track)
+
+    create Decoder2
+    Decoder -> Decoder2: start
+
+    activate Decoder2
+
+    loop while playing
+
+      Decoder2 -> Decoder2: increment\nposition 
+    end
+
+    Decoder --> IPlayer2
+    IPlayer2 --> Track
+    deactivate IPlayer2
+    Track --> IPlayer2
+
+    IPlayer2 -> IPlayer: res_cond.notify_one
+    deactivate IPlayer
+    deactivate IPlayer2
+
+    end
+
+  == end of track reached ==
+
+    Decoder2 -> Events: push(cmdAfter)
+    Decoder2 -> IPlayer2: cmd_cond.notify_one()
+    activate IPlayer2
+    deactivate Decoder2
+
+    IPlayer2 -> Events: pop()
+    Events --> IPlayer2: cmd
+
+    IPlayer2 -> Cmd: execute()
+
+    note over IPlayer2, Playlist: Play next track
+
+#+end_src
